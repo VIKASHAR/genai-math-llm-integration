@@ -36,54 +36,87 @@ Present the result in a user-friendly format and provide additional guidance if 
 ```
 import math
 import re
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+import os
+from dotenv import load_dotenv
 
-def calculate_cylinder_volume(radius: float, height: float) -> float:
-    """Calculate the volume of a cylinder given its radius and height."""
-    if radius <= 0 or height <= 0:
-        return "Radius and height must be positive values."
-    return math.pi * radius**2 * height
+# Load environment variables from .env file
+load_dotenv()
 
+# Get the Google API key from the environment variable
+api_key = os.getenv("GOOGLE_API_KEY")  # Ensure to set this in your .env file
 
-def chat_with_llm(query: str) -> str:
-    """Process user query to calculate cylinder volume."""
-    if "cylinder" in query.lower() and "volume" in query.lower():
-        # Use regex to extract radius and height
-        radius = re.search(r"radius\s*(-?\d+(\.\d+)?)", query, re.IGNORECASE)
-        height = re.search(r"height\s*(-?\d+(\.\d+)?)", query, re.IGNORECASE)
+# Define the mathematical function
+def calculate_cylinder_volume(radius, height):
+    """Calculate the volume of a cylinder."""
+    return math.pi * radius ** 2 * height
 
-        if radius and height:
-            # Convert matched groups to float
-            radius = float(radius.group(1))
-            height = float(height.group(1))
+# Define the LLM prompt template
+prompt_template = """
+You are a helpful assistant capable of performing mathematical calculations. 
+When the user asks for the volume of a cylinder, ensure you understand the input values (radius and height) and use the function `calculate_cylinder_volume` to compute the result.
 
-            # Calculate the volume
-            result = calculate_cylinder_volume(radius, height)
-            if isinstance(result, str):  # Error message from the function
-                return result
-            return f"The volume of the cylinder with radius {radius} and height {height} is {result:.2f} cubic units."
-        else:
-            return "Please provide valid radius and height in your query."
+User Question: {user_question}
+Function Name: calculate_cylinder_volume
+"""
 
-    return "I can help you calculate the volume of a cylinder. Please specify the radius and height."
+# Initialize the conversational chain using LLMChain
+def get_conversational_chain():
+    """Set up the conversational chain for processing user inputs."""
+    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3, google_api_key=api_key)
+    prompt = PromptTemplate(template=prompt_template, input_variables=["user_question"])
+    chain = LLMChain(prompt=prompt, llm=model)
+    return chain
 
+# Process user input and generate a response
+def process_user_question(user_question):
+    """Generate a response for the user question."""
+    try:
+        # Use regular expressions to extract numbers from the question
+        numbers = [float(num) for num in re.findall(r'\d+\.\d+|\d+', user_question)]
+        
+        if len(numbers) < 2:
+            return "Please provide both radius and height for the calculation."
+        
+        if len(numbers) > 2:
+            return "Invalid input. Please provide exactly two values for radius and height."
+        
+        radius, height = numbers[:2]  # Extract the first two numbers
+        volume = calculate_cylinder_volume(radius, height)
+        return f"The volume of the cylinder with radius {radius} and height {height} is {volume:.2f}."
+    except Exception as e:
+        return f"An error occurred: {e}"
 
-# Test cases
-queries = [
-    "What is the volume of a cylinder with radius 4 and height 5?",
-    "Calculate the volume of a cylinder with radius 10 and height -5.",
-    "How to find the volume of a cylinder?",
-]
+# Main function to simulate interaction
+def main():
+    # Sample user questions with missing or invalid inputs
+    user_questions = [
+        "What is the volume of a cylinder with radius 10 and height 20?",  # Valid input
+        "What is the volume of a cylinder with height 20?",  # Missing radius
+        "What is the volume of a cylinder with radius ten and height 20?",  # Invalid radius format
+        "Please calculate the cylinder volume.",  # Missing both radius and height
+    ]
+    
+    # Process each question and generate responses
+    for user_question in user_questions:
+        print(f"User: {user_question}")
+        response = process_user_question(user_question)
+        print(f"Assistant: {response}")
+        print("-" * 40)
 
-for query in queries:
-    print(f"Query: {query}")
-    response = chat_with_llm(query)
-    print(f"Response: {response}\n")
+# Run the program
+if __name__ == "__main__":
+    main()
+
 
 ```
 
 ### OUTPUT:
 
-![exp-1 op](https://github.com/user-attachments/assets/e47738b8-f5a2-435a-9c25-74b4dd39caca)
+![image](https://github.com/user-attachments/assets/32b987bf-4bcb-445e-9c82-bae9b364ea8f)
+
 
 ### RESULT:
 
