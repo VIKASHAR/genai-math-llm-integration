@@ -33,7 +33,7 @@ Present the result in a user-friendly format and provide additional guidance if 
 
 ### PROGRAM:
 
-```
+```python
 import math
 import re
 from langchain.chains import LLMChain
